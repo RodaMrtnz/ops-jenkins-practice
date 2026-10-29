@@ -1,0 +1,34 @@
+pipeline {
+    agent any
+    parameters {
+        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Git branch to test')
+        choice(name: 'TEST_MODE', choices: ['all', 'addition', 'subtraction', 'multiplication'], description: 'Tests to run')
+        booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Execute automated tests')
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scmGit(branches: [[name: "*/${params.BRANCH_NAME}"]], userRemoteConfigs: [[url: scm.userRemoteConfigs[0].url, credentialsId: scm.userRemoteConfigs[0].credentialsId]])
+            }
+        }
+        stage('Build') {
+            steps { sh 'mvn -B -DskipTests package' }
+        }
+        stage('Tests') {
+            when { expression { params.RUN_TESTS } }
+            steps {
+                script {
+                    def selected = [addition: 'additionWorks', subtraction: 'subtractionWorks', multiplication: 'multiplicationWorks']
+                    if (params.TEST_MODE == 'all') {
+                        sh 'mvn -B test'
+                    } else {
+                        sh "mvn -B -Dtest=CalculatorTest#${selected[params.TEST_MODE]} test"
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always { junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml' }
+    }
+}
