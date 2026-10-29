@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    tools {
+    maven 'Maven-3'
+        }
     parameters {
         string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Git branch to test')
         choice(name: 'TEST_MODE', choices: ['all', 'addition', 'subtraction', 'multiplication'], description: 'Tests to run')
@@ -12,7 +15,7 @@ pipeline {
             }
         }
         stage('Build') {
-            steps { sh 'mvn -B -DskipTests package' }
+            steps { bat 'mvn -B -DskipTests package' }
         }
         stage('Tests') {
             when { expression { params.RUN_TESTS } }
@@ -20,9 +23,9 @@ pipeline {
                 script {
                     def selected = [addition: 'additionWorks', subtraction: 'subtractionWorks', multiplication: 'multiplicationWorks']
                     if (params.TEST_MODE == 'all') {
-                        sh 'mvn -B test'
+                        bat 'mvn -B test'   
                     } else {
-                        sh "mvn -B -Dtest=CalculatorTest#${selected[params.TEST_MODE]} test"
+                        bat "mvn -B -Dtest=CalculatorTest#${selected[params.TEST_MODE]} test"
                     }
                 }
             }
