@@ -1,37 +1,76 @@
 pipeline {
     agent any
+
     tools {
-    maven 'Maven-3'
-        }
-    parameters {
-        string(name: 'BRANCH_NAME', defaultValue: 'main', description: 'Git branch to test')
-        choice(name: 'TEST_MODE', choices: ['all', 'addition', 'subtraction', 'multiplication'], description: 'Tests to run')
-        booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Execute automated tests')
+        maven 'Maven-3'
     }
+
+    parameters {
+        string(
+            name: 'BRANCH_NAME',
+            defaultValue: 'main',
+            description: 'Git branch to test'
+        )
+
+        choice(
+            name: 'TEST_MODE',
+            choices: ['all', 'addition', 'subtraction', 'multiplication'],
+            description: 'Tests to run'
+        )
+
+        booleanParam(
+            name: 'RUN_TESTS',
+            defaultValue: true,
+            description: 'Execute automated tests'
+        )
+    }
+
     stages {
+
         stage('Checkout') {
             steps {
-                checkout scmGit(branches: [[name: "*/${params.BRANCH_NAME}"]], userRemoteConfigs: [[url: scm.userRemoteConfigs[0].url, credentialsId: scm.userRemoteConfigs[0].credentialsId]])
+                git branch: "${params.BRANCH_NAME}",
+                    url: 'https://github.com/RodaMrtnz/ops-jenkins-practice.git'
             }
         }
+
         stage('Build') {
-            steps { bat 'mvn -B -DskipTests package' }
-        }
-        stage('Tests') {
-            when { expression { params.RUN_TESTS } }
             steps {
-                script {
-                    def selected = [addition: 'additionWorks', subtraction: 'subtractionWorks', multiplication: 'multiplicationWorks']
-                    if (params.TEST_MODE == 'all') {
-                        bat 'mvn -B test'   
-                    } else {
-                        bat "mvn -B -Dtest=CalculatorTest#${selected[params.TEST_MODE]} test"
+                dir('ops-jenkins-practice') {
+                    bat 'mvn -B -DskipTests package'
+                }
+            }
+        }
+
+        stage('Tests') {
+            when {
+                expression { params.RUN_TESTS }
+            }
+
+            steps {
+                dir('ops-jenkins-practice') {
+                    script {
+                        def selected = [
+                            addition: 'additionWorks',
+                            subtraction: 'subtractionWorks',
+                            multiplication: 'multiplicationWorks'
+                        ]
+
+                        if (params.TEST_MODE == 'all') {
+                            bat 'mvn -B test'
+                        } else {
+                            bat "mvn -B -Dtest=CalculatorTest#${selected[params.TEST_MODE]} test"
+                        }
                     }
                 }
             }
         }
     }
+
     post {
-        always { junit allowEmptyResults: true, testResults: 'target/surefire-reports/*.xml' }
+        always {
+            junit allowEmptyResults: true,
+                  testResults: 'ops-jenkins-practice/target/surefire-reports/*.xml'
+        }
     }
 }
